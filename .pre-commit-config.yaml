@@ -13,9 +13,4 @@ repos:
   rev: 22.10.0
   hooks:
   - id: black
-- repo: https://github.com/kynan/nbstripout
-  rev: 0.6.0
-  hooks:
-  - id: nbstripout
-    entry: nbstripout nbs/*
-    types: [jupyter]
+    args: [--target-version, py310, FastAI2022p2/, ./, --exclude, "setup.py"]
