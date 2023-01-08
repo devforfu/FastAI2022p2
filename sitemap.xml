@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://devforfu.github.io/FastAI2022p2/index.html</loc>
+    <lastmod>2023-01-08T20:35:25.856Z</lastmod>
+  </url>
+  <url>
+    <loc>https://devforfu.github.io/FastAI2022p2/clustering.html</loc>
+    <lastmod>2023-01-08T20:35:26.677Z</lastmod>
+  </url>
+  <url>
+    <loc>https://devforfu.github.io/FastAI2022p2/02a_backprop.html</loc>
+    <lastmod>2023-01-08T20:35:27.125Z</lastmod>
+  </url>
+  <url>
+    <loc>https://devforfu.github.io/FastAI2022p2/core.html</loc>
+    <lastmod>2023-01-08T20:35:27.465Z</lastmod>
+  </url>
+  <url>
+    <loc>https://devforfu.github.io/FastAI2022p2/autograd.html</loc>
+    <lastmod>2023-01-08T20:35:27.897Z</lastmod>
+  </url>
+  <url>
+    <loc>https://devforfu.github.io/FastAI2022p2/02b_cleanup.html</loc>
+    <lastmod>2023-01-08T20:35:28.377Z</lastmod>
+  </url>
+</urlset>

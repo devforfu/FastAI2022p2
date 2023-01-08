@@ -1,0 +1,163 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "FastAI2022p2",
+    "section": "",
+    "text": "This file will become your README and also the index of your documentation."
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "FastAI2022p2",
+    "section": "Install",
+    "text": "Install\npip install FastAI2022p2"
+  },
+  {
+    "objectID": "index.html#how-to-use",
+    "href": "index.html#how-to-use",
+    "title": "FastAI2022p2",
+    "section": "How to use",
+    "text": "How to use\nFill me in please! Don’t forget code examples:\n\n1+1"
+  },
+  {
+    "objectID": "clustering.html",
+    "href": "clustering.html",
+    "title": "Clustering Algorithms",
+    "section": "",
+    "text": "import math\nimport torch\nimport matplotlib.pyplot as plt\nfrom torch.distributions import MultivariateNormal"
+  },
+  {
+    "objectID": "clustering.html#randomly-generated-data",
+    "href": "clustering.html#randomly-generated-data",
+    "title": "Clustering Algorithms",
+    "section": "1. Randomly-Generated Data",
+    "text": "1. Randomly-Generated Data\n\nn_clusters = 10\nn_samples = 250\n\n\nrandom_centers = torch.rand((n_clusters, 2)) * 100 - 50\n\n\nplt.scatter(random_centers[...,0], random_centers[...,1], marker=\"x\");\n\n\ndef generate_data(clusters: torch.Tensor, n: int):\n    from itertools import chain\n    colors = torch.as_tensor(list(chain(*[[i]*n for i in range(clusters.shape[0])])))\n    return (\n        torch.cat([\n            MultivariateNormal(center, torch.diag(torch.tensor([5., 5.]))).sample((n,))\n            for center in clusters\n        ]),\n        colors\n    )\n\n\ndata, clusters = generate_data(random_centers, n_samples)\n\n\ndef plot_data(X, clusters, centers):\n    assert len(X) == len(clusters)\n    _, ax = plt.subplots(1, 1)\n    ax.scatter(X[...,0], X[...,1], c=clusters, cmap=\"tab10\", marker=\".\", s=2)\n    ax.scatter(centers[..., 0], centers[..., 1], c=\"black\", marker=\"X\", s=20)\n    ax.scatter(centers[..., 0], centers[..., 1], c=\"white\", marker=\"x\", s=10)\n\n\nplot_data(data, clusters, random_centers)\n\n\n#         _, ax = plt.subplots(1, 1)\n#         ax.scatter(X[...,0], X[...,1], c=colors, cmap=\"tab10\", marker=\".\", s=2)\n#         ax.scatter(centers[..., 0], centers[..., 1], c=\"black\", marker=\"X\", s=20)\n#         ax.scatter(centers[..., 0], centers[..., 1], c=\"white\", marker=\"x\", s=10)\n\n\n# from dataclasses import dataclass, field\n# @dataclass\n# class RandomClusters:\n#     n_clusters: int\n#     n_per_cluster: int\n#     a: float = 100\n#     b: float = -50\n    \n#     _centers: torch.Tensor = field(init=False)\n#     _points: torch.Tensor = field(init=False)\n    \n#     @property\n#     def centers(self): return self._centers\n\n#     @property\n#     def points(self): return self._points\n\n#     def __repr__(self): return (\n#         f\"RandomCluster(centers={self._centers.shape}, points={self._points.shape})\\n\"\n#         f\"Centers:\\n{self.centers}\"\n#     )\n    \n#     def __post_init__(self):\n#         uniform = torch.rand((self.n_clusters, 2))\n#         centers = self.a*uniform + self.b\n#         self._centers = centers\n#         self._points = generate_data(centers, self.n_per_cluster)\n        \n#     def plot_centers(self):\n#         plt.scatter(self.centers[...,0], self.centers[...,1], marker=\"x\")\n        \n#     def plot_data(self):\n#         X, centers, colors = self._points, self._centers, self.true_clusters()\n#         _, ax = plt.subplots(1, 1)\n#         ax.scatter(X[...,0], X[...,1], c=colors, cmap=\"tab10\", marker=\".\", s=2)\n#         ax.scatter(centers[..., 0], centers[..., 1], c=\"black\", marker=\"X\", s=20)\n#         ax.scatter(centers[..., 0], centers[..., 1], c=\"white\", marker=\"x\", s=10)\n        \n#     def true_clusters(self):\n#         from itertools import chain\n#         colors = list(chain(*[[i]*self.n_per_cluster for i in range(self.n_clusters)]))\n#         return colors"
+  },
+  {
+    "objectID": "clustering.html#mean-shift-clustering",
+    "href": "clustering.html#mean-shift-clustering",
+    "title": "Clustering Algorithms",
+    "section": "2. Mean Shift Clustering",
+    "text": "2. Mean Shift Clustering\n\ndef gaussian(data: torch.Tensor, bw: float): \n    return torch.exp(-0.5*(data/bw)**2) / (bw*math.sqrt(2*math.pi))\n\n\n[plt.plot(gaussian(torch.arange(20), bw), label=f\"bw={bw}\") for bw in (1., 2.5, 5.)]\nplt.legend()\nplt.show()\n\n\n2.1. One Sample\n\nX = data\nx = X[0]\nx, x.shape, X.shape\n\n\nweight_to_x = gaussian((x - X).pow(2).sum(1).sqrt(), 2.5)\n\n\nweight_to_x.shape, X.shape\n\n\ndelta = (weight_to_x[:,None] * X).sum(0)/weight_to_x.sum()\ndelta\n\n\n\n2.2. All Samples\n\nX = data.clone()\n\n\nW = (X[None] - X[:,None]).pow(2).sum(2).sqrt()\n\n\nplt.imshow(W);\n\n\nW.shape, X.shape\n\n\n(W @ X)/W.sum(1)[:,None]\n\n\nX = data.clone()\nfor _ in range(15):\n    W = gaussian((X[None] - X[:, None]).pow(2).sum(2).sqrt(), 2.5)\n    X = (W @ X)/W.sum(1, keepdim=True)\n\n\nplot_data(X, clusters, random_centers + 1)\n\n\nms_centers, ms_clusters = X.unique(dim=0, return_inverse=True)\n\n\nplot_data(data, ms_clusters, ms_centers)"
+  },
+  {
+    "objectID": "02a_backprop.html",
+    "href": "02a_backprop.html",
+    "title": "FastAI2022p2",
+    "section": "",
+    "text": "import gzip\nimport pickle\nfrom pathlib import Path\nfrom urllib.request import urlretrieve\nimport torch"
+  },
+  {
+    "objectID": "02a_backprop.html#mse-loss",
+    "href": "02a_backprop.html#mse-loss",
+    "title": "FastAI2022p2",
+    "section": "MSE Loss",
+    "text": "MSE Loss\n\\[\n\\begin{aligned}\nL &= MSE(y, \\hat{y}) = \\mathbb{E}(y - \\hat{y})^2 = \\mathbb{E}(d)^2 \\\\\n\\frac{dL}{d\\hat{y}} &= 2 \\times \\mathbb{E}(d) = 2\\frac{d}{N}\n\\end{aligned}\n\\]\n\nclass MSE(Module):\n    def forward(self, pred, gt):\n        d = pred - gt\n        self.cache(pred=pred, d=d)\n        return d.pow(2).mean()\n    def backward(self):\n        pred, d = self.get(\"pred\", \"d\")\n        pred.g = 2 * d / d.shape[0]\n\n\nx, y = grad(t([1.5, 0.3, 2.0])), grad(t([1., 1., 3.]))\n\nmse = MSE()\nmy, ref = mse(x, y), F.mse_loss(x, y)\ntest(my, ref)\n\nmse.backward()\nref.backward()\ntest(x.g, x.grad)"
+  },
+  {
+    "objectID": "02a_backprop.html#relu",
+    "href": "02a_backprop.html#relu",
+    "title": "FastAI2022p2",
+    "section": "ReLU",
+    "text": "ReLU\n\nclass ReLU(Module):\n    def forward(self, inp):\n        out = inp.clamp_min(0)\n        self.cache(i=inp, o=out)\n        return out\n    def backward(self):\n        i, o = self.get(\"i\", \"o\")\n        i.g = (i > 0).float() * o.g\n\n\nfrom torch.nn import MSELoss\n\n\nx, y = grad(t([-1.5, 0., 2.0])), grad(t([1., 1., 3.]))\n\nF.mse_loss(F.relu(x), y).backward()\n\nmse, relu = MSE(), ReLU()\nmse(relu(x), y)\nmse.backward()\nrelu.backward()\n\ntest(x.g, x.grad)"
+  },
+  {
+    "objectID": "02a_backprop.html#linear",
+    "href": "02a_backprop.html#linear",
+    "title": "FastAI2022p2",
+    "section": "Linear",
+    "text": "Linear\n\nclass MSE(Module):\n    def forward(self, pred, gt):\n        d = pred - gt\n        self.cache(pred=pred, d=d)\n        return d.pow(2).mean()\n    def backward(self):\n        pred, d = self.get(\"pred\", \"d\")\n        pred.g = 2 * d / d.shape[0]\n\n\nclass Linear(Module):\n    def __init__(self, W, b):\n        super().__init__()\n        self.W, self.b = W, b\n    def forward(self, inp):\n        out = inp @ self.W + self.b\n        self.cache(i=inp, o=out)\n        return out\n    def backward(self):\n        i, o = self.get(\"i\", \"o\")\n        i.g = o.g @ self.W.t() # i.g = self.W * o.g\n        self.W.g = i.t() @ o.g # self.W.g = i * o.g\n        self.b.g = o.g\n\n\nX = torch.tensor([\n    [ 1, -2, 3, 1],\n    [ 0,  1, 0, 1],\n    [-1,  0, 1, 0]\n]).float()\ny = torch.tensor([1, 0, 3]).unsqueeze(-1)\nX, y\n\n\nW1 = grad(torch.eye(4))\nb1 = grad(torch.ones(X.shape[0], W1.shape[-1]))\nW2 = grad(t([1., 0., -1., 1.]).unsqueeze(-1))\nb2 = grad(torch.ones((X.shape[0], W2.shape[1])))\n\n\n(F.relu(F.relu(X@W1 + b1)@W2 + b2) - y).pow(2).mean().backward()\n\n\nmse = MSE()\nlin1, rel1 = Linear(W1, b1), ReLU()\nlin2, rel2 = Linear(W2, b2), ReLU()\nmse(rel2(lin2(rel1(lin1(X)))), y)\nmse.backward()\nrel2.backward()\nlin2.backward()\nrel1.backward()\nlin1.backward()\n\n\n[test(x.g, x.grad) for x in (W1, W2, b1, b2)];"
+  },
+  {
+    "objectID": "02a_backprop.html#model",
+    "href": "02a_backprop.html#model",
+    "title": "FastAI2022p2",
+    "section": "Model",
+    "text": "Model\n\nclass MLP(Module):\n    def __init__(self, layers):\n        super().__init__()\n        self.layers = layers\n    def forward(self, inp):\n        x = inp\n        for layer in self.layers:\n            x = layer(x)\n        return x\n    def backward(self):\n        for layer in self.layers[::-1]:\n            layer.backward()\n\n\nW1 = grad(torch.eye(4))\nb1 = grad(torch.ones(X.shape[0], W1.shape[-1]))\nW2 = grad(t([1., 0., -1., 1.]).unsqueeze(-1))\nb2 = grad(torch.ones(X.shape[0], W2.shape[1]))\n\nmse = MSE()\nlin1, rel1 = Linear(W1, b1), ReLU()\nlin2, rel2 = Linear(W2, b2), ReLU()\nmodel = MLP([lin1, rel1, lin2, rel2])\n\nmse(model(X), y)\nmse.backward()\nmodel.backward()"
+  },
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "core",
+    "section": "",
+    "text": "source\n\nfoo\n\n foo ()"
+  },
+  {
+    "objectID": "autograd.html",
+    "href": "autograd.html",
+    "title": "Data Preview",
+    "section": "",
+    "text": "from dataclasses import dataclass, field\nfrom typing import Protocol"
+  },
+  {
+    "objectID": "autograd.html#log-softmax-and-cross-entropy",
+    "href": "autograd.html#log-softmax-and-cross-entropy",
+    "title": "Data Preview",
+    "section": "Log Softmax and Cross-Entropy",
+    "text": "Log Softmax and Cross-Entropy\n\ndef softmax(t):\n    p = torch.exp(t)\n    return p / p.sum(1, keepdim=True)\n\n\nassert torch.allclose(softmax(logits), torch.softmax(logits, dim=1))\n\n\nprobs = softmax(logits)\nprobs\n\n\ndef ce(logits, targets):\n    probs = softmax(logits)\n    probs = probs.gather(dim=1, index=targets.view(-1, 1)).squeeze(1)\n    return -probs.log().mean()\n\n\no, y = mlp(x_trn[5:10]), y_trn[5:10]\n\n\nassert torch.allclose(ce(o, y), F.cross_entropy(o, y))\n\n\ndef log_softmax(t):\n    t.sub_(t.max(dim=1, keepdim=True)[0])\n    t.sub_(t.exp().sum(dim=1, keepdim=True).log())\n    return t\n\n\ndef ce(logits, targets):\n    return -log_softmax(logits).gather(dim=1, index=targets.view(-1, 1)).squeeze(1).mean()\n\n\nassert torch.allclose(ce(o, y), F.cross_entropy(o, y))"
+  },
+  {
+    "objectID": "autograd.html#dataset",
+    "href": "autograd.html#dataset",
+    "title": "Data Preview",
+    "section": "Dataset",
+    "text": "Dataset\n\nclass Dataset:\n    def __init__(self, x, y):\n        assert len(x) == len(y)\n        self.x, self.y = x, y\n    def __len__(self): return len(self.x)\n    def __getitem__(self, index): return self.x[index], self.y[index]\n\n\nds = Dataset(x_trn, y_trn)\n\n\nds[0][0].shape, ds[0][1].shape"
+  },
+  {
+    "objectID": "autograd.html#dataloader",
+    "href": "autograd.html#dataloader",
+    "title": "Data Preview",
+    "section": "DataLoader",
+    "text": "DataLoader\n\nclass Sampler(Protocol):\n    def get_idx(self, dataset: Dataset): pass\n\n@dataclass\nclass SequentialSampler(Sampler):\n    def get_idx(self, dataset: Dataset): return np.arange(len(dataset))\n\n@dataclass\nclass RandomSampler(Sampler):\n    def get_idx(self, dataset: Dataset): \n        idx = SequentialSampler().get_idx(dataset)\n        np.random.shuffle(idx)\n        return idx\n    \n@dataclass\nclass DataLoader:\n    dataset: Dataset\n    bs: int = 1\n    shuffle: bool = False\n    sampler: Sampler = None\n    \n    def __post_init__(self):\n        if self.sampler is None:\n            self.sampler = (RandomSampler if self.shuffle else SequentialSampler)()\n    \n    def __iter__(self):\n        idx = self.sampler.get_idx(self.dataset)\n        for i in range(0, len(idx), self.bs):\n            yield self.dataset[idx[i:i+self.bs]]\n            \n    def __len__(self): return int(np.ceil(len(self.dataset) // self.bs))\n\n\nnext(iter((DataLoader(ds, 4))))\n\n\nnext(iter((DataLoader(ds, 4, shuffle=True))))"
+  },
+  {
+    "objectID": "autograd.html#training-loop",
+    "href": "autograd.html#training-loop",
+    "title": "Data Preview",
+    "section": "Training Loop",
+    "text": "Training Loop\n\ndef acc(x, y): return (x == y).float().mean()\n\n\nclass Optimizer:\n    def __init__(self, params, lr): \n        self.params, self.lr = list(params), lr\n    def step(self): \n        for param in self.params:\n            param.data -= self.lr * param.grad\n    def zero_grad(self):\n        for param in self.params:\n            param.grad.zero_()\n\n\nfrom collections import defaultdict\n\nepochs = 10\nlr = 0.03\nmlp = MLP(784, 50, 10)\nopt = Optimizer(mlp.parameters(), lr)\n\ntrn_dl = DataLoader(Dataset(x_trn, y_trn), 32, True)\nval_dl = DataLoader(Dataset(x_val, y_val), 64)\n\nfor epoch in range(epochs):\n    cnts = defaultdict(int)\n    \n    for (xb, yb) in trn_dl:\n        loss = ce(mlp(xb), yb)\n        loss.backward()\n        opt.step()\n        opt.zero_grad()\n        cnts[\"train_loss\"] += loss.item()\n                \n    cnts[\"train_loss\"] /= len(trn_dl)\n        \n    with torch.no_grad():\n        for (xb, yb) in val_dl:\n            logits = mlp(xb)\n            pred = softmax(logits).argmax(dim=1)\n            cnts[\"valid_loss\"] += ce(logits, yb) \n            cnts[\"valid_acc\"] += acc(pred, yb)\n    \n    cnts[\"valid_loss\"] /= len(val_dl)\n    cnts[\"valid_acc\"] /= len(val_dl)\n    cnts[\"epoch\"] = epoch\n    \n    print(\"Epoch {epoch:03d} | loss(trn) = {train_loss:.4f} | loss(val) = {valid_loss:.4f} | acc = {valid_acc:.4f}\".format(**cnts))"
+  },
+  {
+    "objectID": "02b_cleanup.html",
+    "href": "02b_cleanup.html",
+    "title": "FastAI2022p2",
+    "section": "",
+    "text": "# !pip install -Uqq more_itertools"
+  },
+  {
+    "objectID": "02b_cleanup.html#mse-loss",
+    "href": "02b_cleanup.html#mse-loss",
+    "title": "FastAI2022p2",
+    "section": "MSE Loss",
+    "text": "MSE Loss\n\\[\n\\begin{aligned}\nL &= MSE(y, \\hat{y}) = \\mathbb{E}(y - \\hat{y})^2 = \\mathbb{E}(d)^2 \\\\\n\\frac{dL}{d\\hat{y}} &= 2 \\times \\mathbb{E}(d) = 2\\frac{d}{N}\n\\end{aligned}\n\\]\n\nclass MSE(Module):\n    def forward(self, pred, gt):\n        return (pred - gt).pow(2).mean()\n    def backward(self):\n        d = self.pred - self.gt\n        self.pred.g = 2 * d / d.shape[0]\n\n\nx, y = grad(t([1.5, 0.3, 2.0])), grad(t([1., 1., 3.]))\n\nmse = MSE()\nmy, ref = mse(x, y), F.mse_loss(x, y)\ntest(my, ref)\n\nmse.backward()\nref.backward()\ntest(x.g, x.grad)"
+  },
+  {
+    "objectID": "02b_cleanup.html#relu",
+    "href": "02b_cleanup.html#relu",
+    "title": "FastAI2022p2",
+    "section": "ReLU",
+    "text": "ReLU\n\nclass ReLU(Module):\n    def forward(self, inp): return inp.clamp_min(0)\n    def backward(self): self.inp.g = (self.inp > 0).float() * self.out.g\n\n\nx, y = grad(t([-1.5, 0., 2.0])), grad(t([1., 1., 3.]))\n\nF.mse_loss(F.relu(x), y).backward()\n\nmse, relu = MSE(), ReLU()\nmse(relu(x), y)\nmse.backward()\nrelu.backward()\n\ntest(x.g, x.grad)"
+  },
+  {
+    "objectID": "02b_cleanup.html#linear",
+    "href": "02b_cleanup.html#linear",
+    "title": "FastAI2022p2",
+    "section": "Linear",
+    "text": "Linear\n\nclass Linear(Module):\n    def __init__(self, W, b):\n        super().__init__()\n        self.W, self.b = W, b\n    def forward(self, inp): return inp @ self.W + self.b\n    def backward(self):\n        i, o = self.inp, self.out\n        i.g = o.g @ self.W.t()\n        self.W.g = i.t() @ o.g\n        self.b.g = o.g.sum(0)  # same bias for all rows\n    def __repr__(self):\n        return f\"{self.__class__.__name__}({list(self.W.shape)})\"\n\n\nX = torch.tensor([\n    [ 1, -2, 3, 1],\n    [ 0,  1, 0, 1],\n    [-1,  0, 1, 0]\n]).float()\ny = torch.tensor([1, 0, 3]).unsqueeze(-1)\nX, y\n\n\nW1 = grad(torch.eye(4))\nb1 = grad(torch.ones(X.shape[0], W1.shape[-1]))\nW2 = grad(t([1., 0., -1., 1.]).unsqueeze(-1))\nb2 = grad(torch.ones((X.shape[0], W2.shape[1])))\n\n(F.relu(F.relu(X@W1 + b1)@W2 + b2) - y).pow(2).mean().backward()\n\nmse = MSE()\nlin1, rel1 = Linear(W1, b1), ReLU()\nlin2, rel2 = Linear(W2, b2), ReLU()\n\nmse(rel2(lin2(rel1(lin1(X)))), y)\nmse.backward()\nrel2.backward()\nlin2.backward()\nrel1.backward()\nlin1.backward()\n\n[test(x.g, x.grad) for x in (W1, W2, b1, b2)];"
+  },
+  {
+    "objectID": "02b_cleanup.html#model",
+    "href": "02b_cleanup.html#model",
+    "title": "FastAI2022p2",
+    "section": "Model",
+    "text": "Model\n\nfrom functools import reduce\nclass MLP(Module):\n    def __init__(self, layers):\n        super().__init__()\n        self.layers = layers\n    def forward(self, inp):\n        return reduce(lambda x, l: l(x), self.layers, inp)\n    def backward(self):\n        [l.backward() for l in self.layers[::-1]]\n    def __repr__(self):\n        fmt = \"\".join(map(lambda l: f\"  {l}\\n\", self.layers))\n        return f\"MLP(layers=[\\n{fmt}])\"\n\n\nW1 = grad(torch.eye(4))\nb1 = grad(torch.ones(X.shape[0], W1.shape[-1]))\nW2 = grad(t([1., 0., -1., 1.]).unsqueeze(-1))\nb2 = grad(torch.ones(X.shape[0], W2.shape[1]))\n\nmse = MSE()\nlin1, rel1 = Linear(W1, b1), ReLU()\nlin2, rel2 = Linear(W2, b2), ReLU()\nmodel = MLP([lin1, rel1, lin2, rel2])\n\nmse(model(X), y)\nmse.backward()\nmodel.backward()\n\n\nW1.g"
+  },
+  {
+    "objectID": "02b_cleanup.html#training",
+    "href": "02b_cleanup.html#training",
+    "title": "FastAI2022p2",
+    "section": "Training",
+    "text": "Training\n\nfrom more_itertools import chunked\n\n\ndef linear(i: int, o: int, init=None) -> Linear:\n    w = torch.randn((i, o))\n    b = torch.ones(o)\n    if init is not None: init(w), init(b)\n    return Linear(w, b)\n\n\ndef mlp(sizes):\n    layers = []\n    for i, o in zip(sizes[:-1], sizes[1:]):\n        layers += [linear(i, o), ReLU()]\n    layers = layers[:-1]\n    return MLP(layers)\n\n\nmlp([784, 10, 1])\n\n\nMNIST_URL = \"https://github.com/mnielsen/neural-networks-and-deep-learning/blob/master/data/mnist.pkl.gz?raw=true\"\n\n\nimport gzip\nimport pickle\nfrom pathlib import Path\n\n\ndef get_mnist(log=True):\n    path_data = Path(\"data\")\n    path_data.mkdir(exist_ok=True)\n    path_gz = path_data/\"mnist.pkl.gz\"\n    if not path_gz.exists(): \n        urlretrieve(MNIST_URL, path_gz)\n    with gzip.open(path_gz, 'rb') as f: \n        ((x_train, y_train), (x_valid, y_valid), _) = pickle.load(f, encoding='latin-1')\n    data = x_train, y_train, x_valid, y_valid\n    if log:\n        print(f\"train: x.shape={x_train.shape}, y.shape={y_train.shape}\")\n        print(f\"valid: x.shape={x_valid.shape}, y.shape={y_valid.shape}\")\n    return data\n\n\nfrom fastai.vision.all import show_images, set_seed\n\n\nset_seed(1)\n\n\nn = 1000\nx_full, y_full, _, _ = get_mnist(False)\nmask = y_full == 5\nx_0 = x_full[mask][:n]\nx_1 = x_full[~mask][:n]\ny_0 = np.ones(x_0.shape[0])\ny_1 = np.zeros_like(y_0)\nx, y = np.vstack([x_0, x_1]), np.hstack([y_0, y_1])\nidx = np.arange(x.shape[0])\nnp.random.shuffle(idx)\nx, y = x[idx], y[idx]\n\n\nshow_images([im.reshape(28, 28) for im in x[:15]])\n\n\nfrom more_itertools import chunked\nlr = 0.01\nn_trn = int(x.shape[0] * 0.8)\nmse = MSE()\nmodel = mlp([784, 10, 1])\n\nx_trn, y_trn = x[:n_trn], y[:n_trn]\nx_val, y_val = x[n_trn:], y[n_trn:]\n\nfor epoch in range(40):\n    val, cnt = 0, 0\n    \n    idx = np.arange(len(x_trn))\n    np.random.shuffle(idx)\n    x_trn, y_trn = x_trn[idx], y_trn[idx]\n    \n    for xb, yb in zip(chunked(x_trn, 10), chunked(y_trn, 10)):\n        xb, yb = np.vstack(xb), np.asarray(yb, dtype=np.float32)\n        xb, yb = torch.as_tensor(xb), torch.as_tensor(yb).view(-1, 1)\n        logits = model(xb)\n        val += mse(logits, yb)\n        cnt += len(yb)\n        mse.backward()\n        model.backward()\n        for lin in (model.layers[0], model.layers[-1]):\n            lin.W -= lr * lin.W.g\n            lin.b -= lr * lin.b.g.sum(0)\n            lin.W.g.zero_()\n            lin.b.g.zero_()\n\n    print(f\"Loss at epoch {epoch+1:2d}: {val/cnt:3.4f}\")\n\n\nfives = (model(torch.as_tensor(x_val)).clip(0, 1) >= 0.5).sum(1).numpy()\n\n\n(fives == y_val).mean()\n\n\\[\n\\begin{align}\nf(X, W, b) &= X \\times W + b = H + b\\\\\n\\\\\nX_{m,n} &=\n\\begin{pmatrix}\nx_{1,1} & x_{1,2} & \\cdots & x_{1,n} \\\\\nx_{2,1} & x_{2,2} & \\cdots & x_{2,n} \\\\\n\\vdots  & \\vdots  & \\ddots & \\vdots  \\\\\nx_{m,1} & x_{m,2} & \\cdots & x_{m,n}\n\\end{pmatrix}\\\\\n\\\\\nW_{n,k} &=\n\\begin{pmatrix}\nw_{1,1} & w_{1,2} & \\cdots & w_{1,k} \\\\\nw_{2,1} & w_{2,2} & \\cdots & w_{2,k} \\\\\n\\vdots  & \\vdots  & \\ddots & \\vdots  \\\\\nw_{n,1} & w_{n,2} & \\cdots & w_{n,k}\n\\end{pmatrix} \\\\\n\\\\\nH_{m,k} &=\n\\begin{pmatrix}\nh_{1,1} & \\cdots & h_{1,k} \\\\\n\\vdots  & \\ddots & \\vdots  \\\\\nh_{m,1} & \\cdots & h_{m,k} \\\\\n\\end{pmatrix} \\\\\n\\\\\nb &= \\left(b_{m,k}\\right)\n\\end{align}\n\\]"
+  }
+]
