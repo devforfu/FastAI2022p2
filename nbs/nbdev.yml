@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "FastAI2022p2"
+  site-url: "https://devforfu.github.io/FastAI2022p2"
+  description: "Homework assignments from fast.ai course (2022, part 2)"
+  repo-branch: main
+  repo-url: "https://github.com/devforfu/FastAI2022p2"
