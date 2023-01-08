@@ -1,6 +1,7 @@
 .*
 !.gitignore
 !.pre-commit-config.yaml
+!.github
 **/data
 **/__pycache__
 **/*.py[cod]
