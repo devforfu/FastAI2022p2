@@ -17,6 +17,5 @@ repos:
   rev: 0.6.0
   hooks:
   - id: nbstripout
-    entry: nbstripout
+    entry: nbstripout nbs/*
     types: [jupyter]
-
