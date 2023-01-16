@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from functools import singledispatch
+from dataclasses import dataclass, fields
 from enum import Enum, auto
 import torch
 import matplotlib.pyplot as plt
@@ -11,18 +14,11 @@ def view(tensor):
 
 
 @view.register
-def view(tensor: torch.Tensor, axes=None):
-    viewer = {
-        TensorLayout.RGBChannelFirst: _view_chw,
-        TensorLayout.RGBChannelLast: _view_hwc,
-        TensorLayout.GrayscaleChannelFirst: _view_1hw,
-        TensorLayout.GrayscaleChannelLast: _view_hw1,
-        TensorLayout.Grayscale: _view_hw,
-        TensorLayout.MultiChannel: _view_grid_hw,
-    }.get(get_tensor_layout(tensor))
+def view(tensor: torch.Tensor, axes=None, **kwargs):
+    viewer = TensorLayout.detect(tensor)
     assert viewer is not None, f"tensor shape is not supported: {tensor.shape}"
-    return viewer(tensor, axes=axes)
-
+    return viewer(tensor, axes=axes, axes_params=AxesParams.from_kwargs(kwargs))
+    
 
 class TensorLayout(Enum):
     RGBChannelFirst = auto()
@@ -32,7 +28,37 @@ class TensorLayout(Enum):
     Grayscale = auto()
     MultiChannel = auto()
     Unknown = auto()
+    
+    @classmethod
+    def detect(cls, tensor: torch.Tensor) -> TensorLayout|None:
+        return {
+            TensorLayout.RGBChannelFirst: _view_chw,
+            TensorLayout.RGBChannelLast: _view_hwc,
+            TensorLayout.GrayscaleChannelFirst: _view_1hw,
+            TensorLayout.GrayscaleChannelLast: _view_hw1,
+            TensorLayout.Grayscale: _view_hw,
+            TensorLayout.MultiChannel: _view_grid_hw,
+        }.get(get_tensor_layout(tensor))
+    
 
+@dataclass
+class AxesParams:
+    visible: bool = True
+    
+    @classmethod
+    def from_kwargs(cls, kwargs: dict, prefix: str = "axes_") -> "AxesParams":
+        expected = {f.name for f in fields(cls)}
+        params = {}
+        for key, value in kwargs.items():
+            key = key.removeprefix(prefix)
+            if key in expected:
+                params[key] = value
+        return AxesParams(**params)
+        
+
+def private_attr(name: str) -> bool:
+    return name.startswith("_")
+        
 
 def get_tensor_layout(tensor: torch.Tensor) -> TensorLayout:
     if tensor.ndim == 3:
@@ -52,28 +78,28 @@ def get_tensor_layout(tensor: torch.Tensor) -> TensorLayout:
     return TensorLayout.Unknown
 
 
-def _view_chw(tensor: torch.Tensor, axes=None):
+def _view_chw(tensor: torch.Tensor, axes_params: AxesParams, axes=None):
     c, h, w = tensor.shape
-    _view_hwc(tensor.view((h, w, c)), axes=axes)
+    _view_hwc(tensor.view((h, w, c)), axes_params=axes_params, axes=axes)
 
 
-def _view_hwc(tensor: torch.Tensor, axes=None):
-    _show_one(tensor, axes=axes)
+def _view_hwc(tensor: torch.Tensor, axes_params: AxesParams, axes=None):
+    _show_one(tensor, axes_params=axes_params, axes=axes)
 
 
-def _view_1hw(tensor: torch.Tensor, axes=None):
-    _show_one(tensor.squeeze(0), axes=axes)
+def _view_1hw(tensor: torch.Tensor, axes_params: AxesParams, axes=None):
+    _show_one(tensor.squeeze(0), axes_params=axes_params, axes=axes)
 
 
-def _view_hw1(tensor: torch.Tensor, axes=None):
-    _show_one(tensor.squeeze(2), axes=axes)
+def _view_hw1(tensor: torch.Tensor, axes_params: AxesParams, axes=None):
+    _show_one(tensor.squeeze(2), axes_params=axes_params, axes=axes)
 
 
-def _view_hw(tensor: torch.Tensor, axes=None):
-    _show_one(tensor, cmap="gray", axes=axes)
+def _view_hw(tensor: torch.Tensor, axes_params: AxesParams, axes=None):
+    _show_one(tensor, cmap="gray", axes_params=axes_params, axes=axes)
 
 
-def _show_one(tensor: torch.Tensor, axes=None, **kwargs):
+def _show_one(tensor: torch.Tensor, axes_params: AxesParams, axes=None, **kwargs):
     if axes is None:
         _, ax = plt.subplots(1, 1)
     elif isinstance(axes, np.ndarray):
@@ -81,9 +107,13 @@ def _show_one(tensor: torch.Tensor, axes=None, **kwargs):
     else:
         ax = axes
     ax.imshow(tensor, **kwargs)
+    if axes_params.visible:
+        ax.set_axis_on()
+    else:
+        ax.set_axis_off()
 
 
-def _view_grid_hw(tensor: torch.Tensor, axes=None):
+def _view_grid_hw(tensor: torch.Tensor, axes_params: AxesParams, axes=None):
     n_channels = tensor.shape[0]
     n_cols = int(np.ceil(np.sqrt(n_channels)))
     n_rows = int(np.ceil(n_channels / n_cols))
@@ -92,5 +122,7 @@ def _view_grid_hw(tensor: torch.Tensor, axes=None):
     else:
         assert isinstance(axes, np.ndarray), "grid expects an array of axes"
         assert len(axes) == tensor.shape[0], "grid should have one axis per channel"
+    for ax in axes.flat:
+        ax.set_axis_off()
     for channel, ax in zip(tensor, axes.flat):
-        view(channel, axes=ax)
+        TensorLayout.detect(channel)(channel, axes=ax, axes_params=axes_params)
