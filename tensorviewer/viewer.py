@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import singledispatch
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from enum import Enum, auto
 import torch
 import matplotlib.pyplot as plt
@@ -15,10 +15,19 @@ def view(tensor):
 
 @view.register
 def view(tensor: torch.Tensor, axes=None, **kwargs):
+    tensor = to_show(tensor)
     viewer = TensorLayout.detect(tensor)
     assert viewer is not None, f"tensor shape is not supported: {tensor.shape}"
     return viewer(tensor, axes=axes, axes_params=AxesParams.from_kwargs(kwargs))
-    
+        
+
+def to_show(tensor: torch.Tensor):
+    if tensor.device != "cpu":
+        tensor = tensor.cpu()
+    if tensor.requires_grad:
+        tensor = tensor.detach()
+    return tensor
+
 
 class TensorLayout(Enum):
     RGBChannelFirst = auto()
@@ -44,6 +53,7 @@ class TensorLayout(Enum):
 @dataclass
 class AxesParams:
     visible: bool = True
+    titles: list[str] = field(default_factory=list)
     
     @classmethod
     def from_kwargs(cls, kwargs: dict, prefix: str = "axes_") -> "AxesParams":
@@ -124,5 +134,8 @@ def _view_grid_hw(tensor: torch.Tensor, axes_params: AxesParams, axes=None):
         assert len(axes) == tensor.shape[0], "grid should have one axis per channel"
     for ax in axes.flat:
         ax.set_axis_off()
-    for channel, ax in zip(tensor, axes.flat):
+    titles = axes_params.titles or []
+    for i, (channel, ax) in enumerate(zip(tensor, axes.flat)):
         TensorLayout.detect(channel)(channel, axes=ax, axes_params=axes_params)
+        if i < len(titles):
+            ax.set_title(titles[i])
