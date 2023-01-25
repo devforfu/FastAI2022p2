@@ -2,17 +2,19 @@
 
 # %% auto 0
 __all__ = ['MLP', 'softmax', 'ce', 'log_softmax', 'Dataset', 'Sampler', 'SequentialSampler', 'RandomSampler', 'DataLoader', 'acc',
-           'Optimizer']
+           'Optimizer', 'accuracy', 'fit', 'get_dls']
 
 # %% ../nbs/03_autograd.ipynb 3
+from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Protocol
+from typing import Callable, Protocol
 
 # %% ../nbs/03_autograd.ipynb 4
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -103,3 +105,65 @@ class Optimizer:
     def zero_grad(self):
         for param in self.params:
             param.grad.zero_()
+
+# %% ../nbs/03_autograd.ipynb 39
+def _fit(
+    epochs: int, 
+    model: nn.Module, 
+    loss_fn: Callable,
+    optimizer: optim.Optimizer | Optimizer,
+    train_dl: DataLoader,
+    valid_dl: DataLoader,
+):
+    for epoch in range(epochs):
+        cnts = defaultdict(int)
+        for (xb, yb) in train_dl:
+            loss = loss_fn(model(xb), yb)
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            cnts["train_loss"] += loss.item()
+        cnts["train_loss"] /= len(train_dl)
+        with torch.no_grad():
+            for (xb, yb) in valid_dl:
+                logits = model(xb)
+                pred = logits.softmax(dim=-1).argmax(dim=-1)
+                cnts["valid_loss"] += loss_fn(logits, yb)
+                cnts["valid_acc"] += acc(pred, yb)
+        cnts["valid_loss"] /= len(valid_dl)
+        cnts["valid_acc"] /= len(valid_dl)
+        cnts["epoch"] = epoch
+        print("Epoch {epoch:03d} | "
+              "loss(trn) = {train_loss:.4f} | "
+              "loss(val) = {valid_loss:.4f} | "
+              "acc = {valid_acc:.4f}".format(**cnts))
+
+# %% ../nbs/03_autograd.ipynb 40
+def accuracy(out, yb): return (out.argmax(dim=1)==yb).float().mean()
+
+# %% ../nbs/03_autograd.ipynb 41
+def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
+    for epoch in range(epochs):
+        model.train()
+        for xb,yb in train_dl:
+            loss = loss_func(model(xb), yb)
+            loss.backward()
+            opt.step()
+            opt.zero_grad()
+
+        model.eval()
+        with torch.no_grad():
+            tot_loss,tot_acc,count = 0.,0.,0
+            for xb,yb in valid_dl:
+                pred = model(xb)
+                n = len(xb)
+                count += n
+                tot_loss += loss_func(pred,yb).item()*n
+                tot_acc  += accuracy (pred,yb).item()*n
+        print(epoch, tot_loss/count, tot_acc/count)
+    return tot_loss/count, tot_acc/count
+
+# %% ../nbs/03_autograd.ipynb 42
+def get_dls(train_ds, valid_ds, bs, **kwargs):
+    return (DataLoader(train_ds, batch_size=bs, shuffle=True, **kwargs),
+            DataLoader(valid_ds, batch_size=bs*2, **kwargs))
